@@ -113,7 +113,14 @@ Two things would cover most of it: read-from-here on tap or long press, and read
 when text is selected. Both need paragraph level anchors in the reader, which is the same
 groundwork the zoom work in issue 7 needs.
 
-## 9. Response length doesn't match the query type
+## 9. Visual dictionary can only select one word
+
+Tapping a word opens the popup straight away, so there's no chance to drag the
+selection across a second word. Names and phrases like "West Indies" or
+"back-up opener" can only be looked up one word at a time, which is the case
+where you most want a meaning.
+
+## 10. Response length doesn't match the query type
 
 I asked for the current weather and got a full overview back instead of a direct answer
 with sources. Short factual questions should get short answers.
