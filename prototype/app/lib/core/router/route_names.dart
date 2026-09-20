@@ -1,1 +1,0 @@
-// Named route path constants.
