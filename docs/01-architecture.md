@@ -347,10 +347,6 @@ articles
 
 books
   _id, title, fileUrl, accessTier
-
-syncItems
-  _id, userId, type,          // tab | bookmark | history
-  payload, updatedAt, deletedAt
 ```
 
 There is no `isPro` field anywhere. Pro is derived:

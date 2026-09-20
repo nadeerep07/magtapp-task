@@ -1,0 +1,140 @@
+# MagTapp Pro - prototype API walkthrough
+#
+# Run top to bottom. The story is steps 3 -> 5 -> 6: the same request, from the
+# same client, returns 403 and then 200, with nothing changing except a row in
+# the database that only the server can write.
+#
+# Setup:
+#   cp .env.example .env
+#   npm install
+#   npm run seed
+#   npm start
+#
+# VS Code REST Client / JetBrains HTTP Client both run this file. The @token
+# variables are captured from earlier responses.
+
+@host = http://localhost:4000
+
+
+### 1. Sign in as a free user. Creates the account on first call.
+# @name authFree
+POST {{host}}/v1/auth
+Content-Type: application/json
+
+{ "email": "free@example.com" }
+
+@freeToken = {{authFree.response.body.token}}
+
+
+### 2. Entitlement before paying. tier is "free"; documents is locked.
+# Expect 200:
+# { "tier": "free",
+#   "features": {
+#     "documents": { "tier": "pro" },
+#     "translate": { "tier": "free", "limit": 5, "used": 0 } } }
+GET {{host}}/v1/me/entitlement
+Authorization: Bearer {{freeToken}}
+
+
+### 3. THE POINT OF THE PROTOTYPE - free user hits the Pro endpoint.
+# Expect 403 PRO_REQUIRED. No client-side flag can change this.
+GET {{host}}/v1/ai/documents
+Authorization: Bearer {{freeToken}}
+
+
+### 4. Free metered feature. Works 5 times today, 429 on the 6th.
+GET {{host}}/v1/ai/translate
+Authorization: Bearer {{freeToken}}
+
+
+### 4b. A fabricated receipt is refused. Expect 422 INVALID_RECEIPT.
+POST {{host}}/v1/subscriptions/verify
+Authorization: Bearer {{freeToken}}
+Content-Type: application/json
+
+{ "platform": "android", "purchaseToken": "i_made_this_up", "productId": "pro_monthly" }
+
+
+### 5. Subscribe. Any token starting with "valid_" is treated as a real purchase.
+# Expect 200 with status "active" and currentPeriodEnd 30 days out.
+POST {{host}}/v1/subscriptions/verify
+Authorization: Bearer {{freeToken}}
+Content-Type: application/json
+
+{ "platform": "android", "purchaseToken": "valid_alice_001", "productId": "pro_monthly" }
+
+
+### 6. Same request as step 3, same token. Now 200.
+# Nothing about the client changed. Entitlement was re-derived server-side.
+GET {{host}}/v1/ai/documents
+Authorization: Bearer {{freeToken}}
+
+
+### 7. Entitlement now reads "pro", and translate's limit is null (unlimited).
+GET {{host}}/v1/me/entitlement
+Authorization: Bearer {{freeToken}}
+
+
+### 8. Re-sending the same receipt is idempotent - no second subscription,
+# no extra 30 days. Apps retry on flaky networks and this must be a no-op.
+POST {{host}}/v1/subscriptions/verify
+Authorization: Bearer {{freeToken}}
+Content-Type: application/json
+
+{ "platform": "android", "purchaseToken": "valid_alice_001", "productId": "pro_monthly" }
+
+
+### 9. Second user, for the receipt-sharing test.
+# @name authOther
+POST {{host}}/v1/auth
+Content-Type: application/json
+
+{ "email": "mallory@example.com" }
+
+@otherToken = {{authOther.response.body.token}}
+
+
+### 10. ANTI-SHARING - Mallory pastes Alice's receipt.
+# Expect 409 RECEIPT_ALREADY_CLAIMED. One purchase, one account, enforced by a
+# unique index on originalTransactionId.
+POST {{host}}/v1/subscriptions/verify
+Authorization: Bearer {{otherToken}}
+Content-Type: application/json
+
+{ "platform": "android", "purchaseToken": "valid_alice_001", "productId": "pro_monthly" }
+
+
+### 11. Webhook: renewal. Extends currentPeriodEnd by 30 days.
+# Real equivalents: Apple posts App Store Server Notifications V2 directly;
+# Google publishes Real-Time Developer Notifications via Pub/Sub.
+POST {{host}}/v1/webhooks/mock
+Content-Type: application/json
+
+{ "originalTransactionId": "otx_alice_001", "eventType": "renewed", "notificationId": "notif_001" }
+
+
+### 12. IDEMPOTENCY - the exact same notification again.
+# Expect 200 { "deduplicated": true }. No second 30 days granted.
+# Stores retry when they don't get a prompt 2xx, so this case is routine.
+POST {{host}}/v1/webhooks/mock
+Content-Type: application/json
+
+{ "originalTransactionId": "otx_alice_001", "eventType": "renewed", "notificationId": "notif_001" }
+
+
+### 13. Webhook: expiry. Sets status to expired.
+POST {{host}}/v1/webhooks/mock
+Content-Type: application/json
+
+{ "originalTransactionId": "otx_alice_001", "eventType": "expired", "notificationId": "notif_002" }
+
+
+### 14. Access is gone immediately. Expect 403 PRO_REQUIRED again.
+# Nothing ran to revoke it - no job, no flag flipped. The entitlement rule just
+# stopped returning true, which is the argument for deriving it.
+GET {{host}}/v1/ai/documents
+Authorization: Bearer {{freeToken}}
+
+
+### 15. Unauthenticated request. Expect 401 UNAUTHORIZED.
+GET {{host}}/v1/me/entitlement

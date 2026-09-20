@@ -1,1 +1,0 @@
-// Standard success response envelope.

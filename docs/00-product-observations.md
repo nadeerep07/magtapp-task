@@ -76,8 +76,6 @@ fetch location", so it actively invites a tap it then doesn't honour.
 The problem is that I can't tell which thing is happening. Are these locked on purpose, or
 is the save path broken? Both look identical from the outside.
 
-
-
 ## 5. Translation renders a blank page
 
 The banner says "Translated from English → Hindi" and then nothing renders. No content, no
@@ -86,8 +84,6 @@ error, no retry.
 ![Translation banner with an empty page below it](screenshots/translate-blank.png)
 
 This is a headline feature and it's dead in the current release.
-
-
 
 ## 6. No zoom in the web reader
 
@@ -104,23 +100,23 @@ a text size setting that persists across sessions. Zoom and reflow solve differe
 problems, so a reading app probably wants both. This matters more with web and desktop on
 the roadmap, where users will expect browser-grade zoom as a baseline.
 
-## 8. Read-aloud always starts from the top
+## 7. Read-aloud always starts from the top
 
 There's no way to pick a starting point, and no way to read just a selected portion. On a
 long article you sit through everything ahead of the part you actually wanted.
 
 Two things would cover most of it: read-from-here on tap or long press, and read-selection
 when text is selected. Both need paragraph level anchors in the reader, which is the same
-groundwork the zoom work in issue 7 needs.
+groundwork the zoom work in issue 6 needs.
 
-## 9. Visual dictionary can only select one word
+## 8. Visual dictionary can only select one word
 
 Tapping a word opens the popup straight away, so there's no chance to drag the
 selection across a second word. Names and phrases like "West Indies" or
 "back-up opener" can only be looked up one word at a time, which is the case
 where you most want a meaning.
 
-## 10. Response length doesn't match the query type
+## 9. Response length doesn't match the query type
 
 I asked for the current weather and got a full overview back instead of a direct answer
 with sources. Short factual questions should get short answers.
